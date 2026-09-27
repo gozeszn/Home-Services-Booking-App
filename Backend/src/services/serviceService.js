@@ -93,39 +93,77 @@ async function serviceUpdate({serviceId, title, description, price, category, pr
     );
     };
 
-    let service;
-
-    try{
-      service = await Service.findOneAndUpdate(
+    const service = await Service.findOneAndUpdate(
         { _id: serviceId, provider: providerExists._id },
         {title, description, price, category, priceUnit, status},
         {new: true}
       );
-    }catch(error){
-
-      if (error.code === 11000) {
+    if(!service) {
         throw new AppError(
-          "A service with these unique details already exists.",
-          409,
-          "DUPLICATE_SERVICE"
+            "Service not found for the given provider.",
+            404,
+            "SERVICE_NOT_FOUND"
         );
-      }
-      throw error;
     }
 }
 
+async function updateServiceStatus({ serviceId, provider, status }) {
+  const providerExists = await ServiceProvider.findOne({ user: provider });
+
+  if (!providerExists) {    
+    throw new AppError(
+      "Service provider not found.",
+      404,
+      "SERVICE_PROVIDER_NOT_FOUND"
+    );
+  }
 
 
+ const service = await Service.findOneAndUpdate(
+    { _id: serviceId, provider: providerExists._id },
+    { status },
+    { new: true }
+  );
 
+  if (!service) {
+    throw new AppError(
+      "Service not found for the given provider.",
+      404,
+      "SERVICE_NOT_FOUND"
+    );
+  }
+}
 
-
-
-
-
+async function viewService({ serviceId, provider }) {
+  const providerExists = await ServiceProvider.findOne({user: provider});
+  if(!providerExists){
+    throw new AppError(
+      'The service provider profile was not found', 404, "NO_PROVIDER_FOUND"
+    );
+  }
+  const service = await Service.findOne(
+    {
+      _id: serviceId,
+      provider: providerExists._id
+    }
+  );
+  if (!service) {
+    throw new AppError(
+      "Service not found for the given provider.",
+      404,
+      "SERVICE_NOT_FOUND"
+    );
+  }
+  return service;
+}
 
 module.exports = {
   createProviderProfile,
   serviceCreate,
-  serviceUpdate
+  serviceUpdate,
+  updateServiceStatus,
+  viewService
 };
+
+
 

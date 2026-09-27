@@ -49,12 +49,30 @@ async function updateService(req,res) {
     })
 }
 
+async function statusUpdate(req,res) {
+  const { status } = req.validated.body;
+  const result = await serviceService.updateServiceStatus({
+    serviceId: req.params.serviceId,
+    provider: req.user._id,
+    status
+  });
+  return res.status(200).json({
+    success: true,
+    data: result
+  });
+}
 
+async function serviceView(req,res){
 
-
-
-
-
+   const result = await serviceService.viewService({
+      serviceId: req.params.serviceId,
+        provider: req.user._id
+   })
+   return res.status(200).json(
+    {success: true,
+    data: result
+  })
+}
 
 
 
@@ -62,5 +80,8 @@ async function updateService(req,res) {
 
 module.exports = {
     createProviderProfile,
-    createService
+    createService,
+    updateService,
+    statusUpdate,
+    serviceView
 }
