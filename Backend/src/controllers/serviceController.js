@@ -14,14 +14,15 @@ async function createProviderProfile(req, res) {
 }
 
 async function createService(req, res) {
-  const { title, description, price, category, status, priceUnit } = req.validated.body;
+  const { title, description, price, categoryId, pricingUnit, serviceArea, availabilitySummary } = req.validated.body;
   const result = await serviceService.serviceCreate({
     title,
     description,
     price,
-    category,
-    status,
-    priceUnit,
+    categoryId,
+    pricingUnit,
+    availabilitySummary,
+    serviceArea,
     provider: req.user._id
   });
   return res.status(201).json({
@@ -31,7 +32,7 @@ async function createService(req, res) {
 }
 
 async function updateService(req,res) {
-  const { title, description, price, category, status, priceUnit } = req.validated.body;
+  const { title, description, price, categoryId, pricingUnit, serviceArea, availabilitySummary } = req.validated.body;
   
     const result = await serviceService.updateService({
         serviceId: req.params.serviceId,
@@ -39,9 +40,10 @@ async function updateService(req,res) {
         title,
         description,
         price,
-        category,
-        status,
-        priceUnit
+        categoryId,
+        pricingUnit,
+        serviceArea,
+        availabilitySummary
     });
     return res.status(200).json({
         success: true,

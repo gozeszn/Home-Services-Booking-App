@@ -1,10 +1,9 @@
 const mongoose = require("mongoose");
-const User = require("./User");
 
 const serviceSchema = new mongoose.Schema({
     provider: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "ServiceProvider",
         required: true
     },
     title: {
@@ -22,18 +21,30 @@ const serviceSchema = new mongoose.Schema({
         type: String,
         trim: true,
         required: true,
-        maxlength: 500
+        maxlength: 200
     },
-    category: {
-        type: String,
+    categoryId: {
+        type: mongoose.Schema.Types.ObjectId,
         required: true,
-        trim: true,
-        maxlength: 100
+        ref: "Category"
     },
-    priceUnit: {
+    pricingUnit: {
         type: String,
         enum: ["per hour", "per service", "per day"],
         required: true
+    },
+    serviceArea:{
+        type: String,
+        required: true,
+          trim: true,
+        maxlength: 500
+    },
+    availabilitySummary:{
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 500
+
     },
     status: {
         type: String,

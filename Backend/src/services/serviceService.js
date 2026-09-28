@@ -3,6 +3,7 @@ const ServiceProvider = require("../models/serviceProvider");
 const Service = require("../models/services");
 const AppError = require("../utils/AppError");
 const serviceController = require('../controllers/serviceController')
+const Category = require("../models/category");
 
 async function createProviderProfile({
   userId,
@@ -44,10 +45,10 @@ async function createProviderProfile({
 }
 
 
-async function serviceCreate({title, description, price, category, status, priceUnit, provider}) {
-  const providerExists = await ServiceProvider.findByOne({user: provider}); //points to the user id of the provider variable passed in the function
+async function serviceCreate({title, description, price, categoryId, pricingUnit, availabilitySummary, serviceArea, provider}) {
+  const providerProfile = await ServiceProvider.findOne({user: provider}); //points to the user id of the provider variable passed in the function
 
-  if(!providerExists) {
+  if(!providerProfile) {
     throw new AppError(
         "Service provider not found.",
         404,
@@ -55,34 +56,32 @@ async function serviceCreate({title, description, price, category, status, price
     );
   }
 
+  const categoryIdExists = await Category.findOne({_id: categoryId, status: "active"});
+  if (!categoryIdExists){
+    throw new AppError(
+      "category not found or inactive", 404, "CATEGORYID_NOT_FOUND_OR_INACTIVE"
+    )
+  }
   let service;
-  try{
+
        service = await Service.create({
         title,
         description,
         price,
-        category,
-        status,
-        priceUnit,
-        provider: provider._id
+        categoryId,
+        pricingUnit,
+        availabilitySummary,
+        serviceArea,
+        provider: providerProfile._id
       });
     
       return service;
 
-  }catch(error) {
-    if (error.code === 11000) {
-      throw new AppError(
-        "A service with these unique details already exists.",
-        409,
-        "DUPLICATE_SERVICE"
-      );
-    }
-    throw error;
-}}
+}
 
+//Update service function
 
-
-async function serviceUpdate({serviceId, title, description, price, category, priceUnit, status, provider}){
+async function serviceUpdate({title, description, price, categoryId, pricingUnit, serviceArea, availabilitySummary, serviceId, provider}) {
     const providerExists = await ServiceProvider.findOne({user: provider});
 
     if(!providerExists){
@@ -93,19 +92,51 @@ async function serviceUpdate({serviceId, title, description, price, category, pr
     );
     };
 
-    const service = await Service.findOneAndUpdate(
-        { _id: serviceId, provider: providerExists._id },
-        {title, description, price, category, priceUnit, status},
-        {new: true}
+    const service = await Service.findOne(
+        { _id: serviceId, provider: providerExists._id }
       );
-    if(!service) {
+       if(!service) {
         throw new AppError(
             "Service not found for the given provider.",
             404,
             "SERVICE_NOT_FOUND"
-        );
+          );
+        }
+        
+      if(title !== undefined) {service.title = title;}
+      if(description !== undefined) {service.description = description;}
+      if(price !== undefined) {service.price = price;}
+
+      if(categoryId !== undefined) {
+        const categoryCheck = await Category.findOne({_id: categoryId, status: "active"});
+      
+    if(!categoryCheck){
+      throw new AppError(
+        "category is not found or inactive",
+        404,
+        "CATEGORY_NOT_FOUND_OR_INACTIVE"
+      )}
+
+      service.categoryId = categoryId;
     }
-}
+
+      if(pricingUnit !== undefined) {
+        service.pricingUnit = pricingUnit;
+      }
+      if(serviceArea !== undefined) {
+        service.serviceArea = serviceArea;
+      }
+      if(availabilitySummary !== undefined) {
+        service.availabilitySummary = availabilitySummary;
+      }
+
+      await service.save();
+      return service;
+
+      }
+
+
+//update service status function
 
 async function updateServiceStatus({ serviceId, provider, status }) {
   const providerExists = await ServiceProvider.findOne({ user: provider });
