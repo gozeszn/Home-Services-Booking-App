@@ -81,7 +81,7 @@ async function serviceCreate({title, description, price, categoryId, pricingUnit
 
 //Update service function
 
-async function serviceUpdate({title, description, price, categoryId, pricingUnit, serviceArea, availabilitySummary, serviceId, provider}) {
+async function updateService({title, description, price, categoryId, pricingUnit, serviceArea, availabilitySummary, serviceId, provider}) {
     const providerExists = await ServiceProvider.findOne({user: provider});
 
     if(!providerExists){
@@ -163,6 +163,7 @@ async function updateServiceStatus({ serviceId, provider, status }) {
       "SERVICE_NOT_FOUND"
     );
   }
+  return service;
 }
 
 async function viewService({ serviceId, provider }) {
@@ -188,13 +189,40 @@ async function viewService({ serviceId, provider }) {
   return service;
 }
 
+// Function to get a service by its ID, ensuring it is active and the provider is also active
+
+async function getServiceById({ serviceId }) {
+  const service = await Service.findOne({
+    _id: serviceId,
+    status: "active"
+  }).populate({
+    path: "provider",
+    populate: {
+      path: "user",
+      select: "fullName status"
+    }
+  });
+
+  if (!service || !service.provider || service.provider.user.status !== "active") {
+    throw new AppError(
+      "Service not found",
+      404,
+      "SERVICE_NOT_FOUND"
+    );
+  }
+
+  return service;
+}
+
 module.exports = {
   createProviderProfile,
   serviceCreate,
-  serviceUpdate,
+  updateService,
   updateServiceStatus,
-  viewService
+  viewService,
+  getServiceById
 };
+
 
 
 

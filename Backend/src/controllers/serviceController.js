@@ -76,6 +76,16 @@ async function serviceView(req,res){
   })
 }
 
+async function getServiceById(req, res) {
+  const result = await serviceService.getServiceById({
+    serviceId: req.params.serviceId
+  });
+
+  return res.status(200).json({
+    success: true,
+    data: result
+  });
+}
 
 
 
@@ -85,5 +95,6 @@ module.exports = {
     createService,
     updateService,
     statusUpdate,
-    serviceView
+    serviceView,
+    getServiceById
 }

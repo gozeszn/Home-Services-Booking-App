@@ -37,13 +37,13 @@ const serviceSchema = new mongoose.Schema({
         type: String,
         required: true,
           trim: true,
-        maxlength: 500
+        maxlength: 200
     },
     availabilitySummary:{
         type: String,
         required: true,
         trim: true,
-        maxlength: 500
+        maxlength: 200
 
     },
     status: {
