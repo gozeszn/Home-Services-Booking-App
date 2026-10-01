@@ -1,7 +1,8 @@
 const express = require("express");
-const categoryController = require("../controllers/categoryController");
+const controller = require("../controllers/categoryController");
+const validate = require("../middleware/validate");
+const { categoriesQuery } = require("../validators/catalogSchemas");
+
 const router = express.Router();
-
-router.get("/", categoryController.getAllCategories);
-
+router.get("/", validate({ query: categoriesQuery }), controller.getAllCategories);
 module.exports = router;

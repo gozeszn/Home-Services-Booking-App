@@ -7,12 +7,13 @@
   "scripts": {
     "dev": "nodemon Backend/src/server.js",
     "start": "node Backend/src/server.js",
-    "test": "node --test Backend/test.js",
-    "test:watch": "node --test --watch Backend/test.js",
-    "check": "node --check Backend/src/app.js && node --check Backend/src/server.js",
+    "test": "node --test Backend/test.js Backend/tests/*.test.js",
+    "test:watch": "node --test --watch Backend/test.js Backend/tests/*.test.js",
+    "check": "node Backend/scripts/checkSource.js",
     "frontend:dev": "vite Frontend --port 5173 --strictPort",
     "frontend:build": "vite build Frontend",
-    "frontend:preview": "vite preview Frontend --port 5173 --strictPort"
+    "frontend:preview": "vite preview Frontend --port 5173 --strictPort",
+    "seed:categories": "node Backend/scripts/seedCategories.js"
   },
   "keywords": [],
   "author": "",

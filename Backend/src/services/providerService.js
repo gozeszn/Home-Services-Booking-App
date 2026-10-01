@@ -1,135 +1,50 @@
 const ServiceProvider = require("../models/serviceProvider");
-const Service = require("../models/services");
 const AppError = require("../utils/AppError");
+const { createProviderProfileSchema } = require("../validators/providerValidator");
+const { toProviderResponse, collectionMeta } = require("../utils/catalogResponse");
+const { getPublicServices, listServices } = require("./serviceService");
 
-
-async function createAndUpdateProviderProfile({
-  userId,
-  description,
-  availabilitySummary,
-  displayName,
-  phone,
-  serviceArea,
-}) {
-  const existingProfile = await ServiceProvider.findOne({ user: userId });
-
-  if (!existingProfile) {
-    const profile = await ServiceProvider.create({
-      user: userId,
-      displayName,
-      description,
-      phone,
-      serviceArea,
-      availabilitySummary,
-    });
-
-    return profile;
-  }
-
-  if (displayName !== undefined) {
-    existingProfile.displayName = displayName;
-  }
-
-  if (description !== undefined) {
-    existingProfile.description = description;
-  }
-
-  if (phone !== undefined) {
-    existingProfile.phone = phone;
-  }
-
-  if (serviceArea !== undefined) {
-    existingProfile.serviceArea = serviceArea;
-  }
-
-  if (availabilitySummary !== undefined) {
-    existingProfile.availabilitySummary = availabilitySummary;
-  }
-
-  await existingProfile.save();
-
-  return existingProfile;
-}
-
-async function getMyProfile({userId}) {
-  const profile = await ServiceProvider.findOne({ user: userId });  
-    if (!profile) {
-        throw new AppError( 
-            "Service provider profile not found.",
-            404,
-            "SERVICE_PROVIDER_PROFILE_NOT_FOUND"
-        );
-    }
-    return profile;
-}
-
-async function getPublicProvider({ providerId }) {
-  const profile = await ServiceProvider.findById(providerId)
-    .populate("user", "fullName status");
-
+async function createAndUpdateProviderProfile({ userId, ...fields }) {
+  let profile = await ServiceProvider.findOne({ user: userId });
   if (!profile) {
-    throw new AppError(
-      "Service provider profile not found.",
-      404,
-      "SERVICE_PROVIDER_PROFILE_NOT_FOUND"
+    const result = createProviderProfileSchema.safeParse(fields);
+    if (!result.success) {
+      throw new AppError("Complete all required provider profile fields.", 400, "VALIDATION_ERROR",
+        result.error.issues.map((issue) => ({
+          field: ["body", ...issue.path].join("."), message: issue.message,
+        })));
+    }
+    // The unique user index prevents duplicate profiles during concurrent onboarding.
+    profile = await ServiceProvider.create({ ...result.data, user: userId });
+  } else {
+    profile = await ServiceProvider.findOneAndUpdate(
+      { user: userId }, { $set: fields }, { returnDocument: "after", runValidators: true }
     );
+    if (!profile) throw new AppError("Provider profile not found.", 404, "SERVICE_PROVIDER_PROFILE_NOT_FOUND");
   }
-
-  if (profile.user.status !== "active") {
-    throw new AppError(
-      "Service provider is not active.",
-      404,
-      "SERVICE_PROVIDER_NOT_ACTIVE"
-    );
-  }
-
-  return profile;
+  return toProviderResponse(profile, { own: true });
 }
 
+async function getMyProfile({ userId }) {
+  return toProviderResponse(await ServiceProvider.findOne({ user: userId }), { own: true });
+}
+
+async function getPublicProvider({ providerId, page = 1, limit = 10 }) {
+  const profile = await ServiceProvider.findById(providerId).populate("user", "status role");
+  if (!profile?.user || profile.user.status !== "active" || profile.user.role !== "provider") {
+    throw new AppError("Provider profile not found.", 404, "SERVICE_PROVIDER_PROFILE_NOT_FOUND");
+  }
+  const result = await getPublicServices({ providerId, page, limit });
+  return { ...toProviderResponse(profile), services: result.services, serviceMeta: result.meta };
+}
 
 async function getMyServices({ userId, status, page = 1, limit = 10 }) {
   const profile = await ServiceProvider.findOne({ user: userId });
-
-  if (!profile) {
-    throw new AppError(
-      "Service provider profile not found.",
-      404,
-      "SERVICE_PROVIDER_PROFILE_NOT_FOUND"
-    );
-  }
-
-  const filter = { provider: profile._id };
-
-  if (status !== undefined) {
-    filter.status = status;
-  }
-
-  const skip = (page - 1) * limit;
-
-  const [services, total] = await Promise.all([
-    Service.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit),
-    Service.countDocuments(filter),
-  ]);
-
-  return {
-    services,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
+  if (!profile) return { services: [], meta: collectionMeta(0, page, limit) };
+  return listServices(
+    { provider: profile._id, ...(status ? { status } : {}) },
+    { page, limit, sort: { createdAt: -1, _id: -1 } }
+  );
 }
 
-
-
-module.exports = {
-  createAndUpdateProviderProfile,
-  getMyProfile,
-  getPublicProvider,
-  getMyServices
-};
+module.exports = { createAndUpdateProviderProfile, getMyProfile, getPublicProvider, getMyServices };

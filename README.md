@@ -1,12 +1,13 @@
 # Home Services Booking App
 
-Member One's backend delivers registration, login, JWT authentication, current-user profile access and updates, role middleware, validation, and shared errors. The other members' feature APIs and the React frontend are separate work.
+The backend delivers Member One's authentication/account APIs and Member Two's provider profiles, categories, and service APIs. Booking, payment-record, review, and admin APIs remain separate work. The React feature pages currently use demo data except for authentication and account profiles.
 
 Start with the [backend handoff guide](docs/backend-handoff.md) for setup, environment variables, development seed accounts, API request/response examples, and integration instructions.
 
 - [Environment template](.env.example)
 - [Backend structure](Backend/STRUCTURE.md)
 - [MVP requirements and team ownership](docs/requirements.md)
+- [Member Two API contract and integration notes](docs/member-two-api.md)
 
 ## Quick start
 
@@ -39,7 +40,7 @@ npm test
 node --test Backend/tests/seedUsers.test.js
 ```
 
-The tests use temporary databases; a first run may download a MongoDB binary. The existing npm test command runs 13 API tests; the separate seed command runs two safeguard tests.
+The tests use temporary databases; a first run may download a MongoDB binary. `npm test` runs all backend suites, including authentication, provider/service API regression tests, and both seed safeguards. `npm run check` checks backend JavaScript syntax and exact local-import casing.
 
 ## Optional development fixtures
 
@@ -50,3 +51,11 @@ node Backend/scripts/seedUsers.js
 ```
 
 This creates customer, provider, and admin accounts in your configured development database. Existing records are preserved. See the handoff guide for account addresses and details. Never commit `.env` or credentials.
+
+For service creation, seed the development categories as well:
+
+```powershell
+npm run seed:categories
+```
+
+This preserves existing categories and requires `NODE_ENV=development`. Then complete the provider profile, create an inactive service, and explicitly activate it. See the Member Two contract for request bodies, IDs, and pagination.

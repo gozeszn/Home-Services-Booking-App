@@ -23,7 +23,7 @@ export default function LoginPage() {
     !requestedPath.startsWith("/login") &&
     !requestedPath.startsWith("/register")
       ? requestedPath
-      : "/profile";
+      : "/dashboard";
 
   if (isLoading) {
     return (

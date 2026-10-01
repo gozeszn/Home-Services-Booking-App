@@ -1,53 +1,21 @@
-const {z} = require("zod");
+const { z } = require("zod");
+const { objectId } = require("./catalogSchemas");
+const { PRICING_UNITS, LEGACY_UNITS, normalizePricingUnit, isValidPrice } = require("../utils/catalogRules");
 
-const createServiceSchema = z
-  .object({
-    title: z.string().trim().min(1).max(100),
+const fields = {
+  title: z.string().trim().min(3).max(100),
+  categoryId: objectId,
+  description: z.string().trim().min(20).max(1500),
+  price: z.number().refine(isValidPrice, "Price must be between 0 and 1,000,000,000 NGN with at most two decimal places"),
+  currency: z.literal("NGN").optional(),
+  pricingUnit: z.enum([...PRICING_UNITS, ...Object.keys(LEGACY_UNITS)]).transform(normalizePricingUnit),
+  serviceArea: z.string().trim().min(2).max(200),
+  availabilitySummary: z.string().trim().min(5).max(300),
+};
 
-    categoryId: z
-      .string()
-      .regex(/^[0-9a-fA-F]{24}$/, "Invalid category ID"),
+const createServiceSchema = z.object(fields).strict();
+const updateServiceSchema = z.object(fields).partial().strict()
+  .refine((value) => Object.keys(value).length > 0, "Provide at least one field to update");
+const statusUpdateSchema = z.object({ status: z.enum(["active", "inactive"]) }).strict();
 
-    description: z.string().trim().min(1).max(200),
-
-    price: z.number().min(0),
-
-    pricingUnit: z.enum(["per hour", "per service", "per day"]),
-
-    serviceArea: z.string().trim().min(1).max(200),
-
-    availabilitySummary: z.string().trim().min(1).max(200),
-  })
-  .strict();
-
-
-const updateServiceSchema = z
-  .object({
-    title: z.string().trim().max(100).optional(),
-    categoryId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid category ID").optional(),
-    description: z.string().trim().max(200).optional(),
-    price: z.number().min(0).optional(),
-    pricingUnit: z.enum(["per hour", "per service", "per day"]).optional(),
-    serviceArea: z.string().trim().max(200).optional(),
-    availabilitySummary: z.string().trim().max(200).optional(),
-  })
-  .strict()
-  .refine(
-    (data) => Object.keys(data).length > 0,
-    "Provide at least one field to update"
-  );
-
-  
-const statusUpdateSchema = z
-  .object({
-    status: z.enum(["active", "inactive"])
-  })
-  .strict();
-
-
-
-  module.exports = {
-    createServiceSchema,
-    updateServiceSchema,
-    statusUpdateSchema
-  };
+module.exports = { createServiceSchema, updateServiceSchema, statusUpdateSchema };

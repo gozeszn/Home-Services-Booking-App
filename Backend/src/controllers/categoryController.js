@@ -1,16 +1,8 @@
-const Category = require("../models/category.js");
-const categoryServices = require("../Services/categoryServices");
+const categoryServices = require("../services/categoryServices");
 
 async function getAllCategories(req, res) {
-
-        const categories = await categoryServices.getAllCategories();
-    return res.status(200).json({
-        success: true,
-        data: categories
-    });
-    
+  const data = await categoryServices.getAllCategories(req.validated.query);
+  return res.status(200).json({ success: true, data });
 }
 
-module.exports = {
-    getAllCategories
-};
+module.exports = { getAllCategories };

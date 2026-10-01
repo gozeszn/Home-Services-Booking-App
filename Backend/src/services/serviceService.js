@@ -1,282 +1,132 @@
-
 const ServiceProvider = require("../models/serviceProvider");
 const Service = require("../models/services");
-const AppError = require("../utils/AppError");
+const User = require("../models/User");
 const Category = require("../models/category");
+const AppError = require("../utils/AppError");
+const { escapeRegex } = require("../utils/catalogRules");
+const { toServiceResponse, collectionMeta } = require("../utils/catalogResponse");
 
+const servicePopulation = [
+  { path: "provider", select: "displayName user", populate: { path: "user", select: "status role" } },
+  { path: "categoryId", select: "name status" },
+];
 
-
-async function serviceCreate({ title, description, price, categoryId, pricingUnit, availabilitySummary, serviceArea, provider }) {
-  const providerProfile = await ServiceProvider.findOne({ user: provider }); //points to the user id of the provider variable passed in the function
-
-  if (!providerProfile) {
-    throw new AppError(
-      "Service provider not found.",
-      404,
-      "SERVICE_PROVIDER_NOT_FOUND"
-    );
+async function requireProvider(userId) {
+  const profile = await ServiceProvider.findOne({ user: userId });
+  if (!profile) {
+    throw new AppError("Complete your provider profile first.", 404, "SERVICE_PROVIDER_PROFILE_NOT_FOUND");
   }
-
-  const categoryIdExists = await Category.findOne({ _id: categoryId, status: "active" });
-  if (!categoryIdExists) {
-    throw new AppError(
-      "category not found or inactive", 404, "CATEGORYID_NOT_FOUND_OR_INACTIVE"
-    )
-  }
-  let service;
-
-  service = await Service.create({
-    title,
-    description,
-    price,
-    categoryId,
-    pricingUnit,
-    availabilitySummary,
-    serviceArea,
-    provider: providerProfile._id
-  });
-
-  return service;
-
+  return profile;
 }
 
-//Update service function
-
-async function updateService({ title, description, price, categoryId, pricingUnit, serviceArea, availabilitySummary, serviceId, provider }) {
-  const providerExists = await ServiceProvider.findOne({ user: provider });
-
-  if (!providerExists) {
-    throw new AppError(
-      "Service provider not found.",
-      404,
-      "SERVICE_PROVIDER_NOT_FOUND"
-    );
-  };
-
-  const service = await Service.findOne(
-    { _id: serviceId, provider: providerExists._id }
-  );
-  if (!service) {
-    throw new AppError(
-      "Service not found for the given provider.",
-      404,
-      "SERVICE_NOT_FOUND"
-    );
+async function requireActiveCategory(categoryId) {
+  if (!await Category.exists({ _id: categoryId, status: "active" })) {
+    throw new AppError("Category not found or inactive.", 404, "CATEGORY_NOT_FOUND_OR_INACTIVE");
   }
-
-  if (title !== undefined) { service.title = title; }
-  if (description !== undefined) { service.description = description; }
-  if (price !== undefined) { service.price = price; }
-
-  if (categoryId !== undefined) {
-    const categoryCheck = await Category.findOne({ _id: categoryId, status: "active" });
-
-    if (!categoryCheck) {
-      throw new AppError(
-        "category is not found or inactive",
-        404,
-        "CATEGORY_NOT_FOUND_OR_INACTIVE"
-      )
-    }
-
-    service.categoryId = categoryId;
-  }
-
-  if (pricingUnit !== undefined) {
-    service.pricingUnit = pricingUnit;
-  }
-  if (serviceArea !== undefined) {
-    service.serviceArea = serviceArea;
-  }
-  if (availabilitySummary !== undefined) {
-    service.availabilitySummary = availabilitySummary;
-  }
-
-  await service.save();
-  return service;
-
 }
 
+async function serviceCreate({ provider, ...fields }) {
+  const profile = await requireProvider(provider);
+  await requireActiveCategory(fields.categoryId);
+  const service = await Service.create({ ...fields, provider: profile._id, currency: "NGN", status: "inactive" });
+  await service.populate(servicePopulation);
+  return toServiceResponse(service);
+}
 
-//update service status function
+async function updateService({ serviceId, provider, ...fields }) {
+  const profile = await requireProvider(provider);
+  // Query ownership before checking any submitted category.
+  const service = await Service.findOne({ _id: serviceId, provider: profile._id });
+  if (!service) throw new AppError("Service not found.", 404, "SERVICE_NOT_FOUND");
+  if (fields.categoryId !== undefined) await requireActiveCategory(fields.categoryId);
+
+  // Atomic field-level updates preserve other concurrent edits and legacy records.
+  const updated = await Service.findOneAndUpdate(
+    { _id: serviceId, provider: profile._id },
+    { $set: fields },
+    { returnDocument: "after", runValidators: true }
+  ).populate(servicePopulation);
+  if (!updated) throw new AppError("Service not found.", 404, "SERVICE_NOT_FOUND");
+  return toServiceResponse(updated);
+}
 
 async function updateServiceStatus({ serviceId, provider, status }) {
-  const providerExists = await ServiceProvider.findOne({ user: provider });
+  const profile = await requireProvider(provider);
+  const existing = await Service.findOne({ _id: serviceId, provider: profile._id });
+  if (!existing) throw new AppError("Service not found.", 404, "SERVICE_NOT_FOUND");
+  if (status === "active") await requireActiveCategory(existing.categoryId);
 
-  if (!providerExists) {
-    throw new AppError(
-      "Service provider not found.",
-      404,
-      "SERVICE_PROVIDER_NOT_FOUND"
-    );
-  }
-
-  const service = await Service.findOneAndUpdate(
-    { _id: serviceId, provider: providerExists._id },
-    { status },
-    { returnDocument: "after" }
-  );
-
-  if (!service) {
-    throw new AppError(
-      "Service not found for the given provider.",
-      404,
-      "SERVICE_NOT_FOUND"
-    );
-  }
-  return service;
+  const updated = await Service.findOneAndUpdate(
+    { _id: serviceId, provider: profile._id },
+    { $set: { status } },
+    { returnDocument: "after", runValidators: true }
+  ).populate(servicePopulation);
+  if (!updated) throw new AppError("Service not found.", 404, "SERVICE_NOT_FOUND");
+  return toServiceResponse(updated);
 }
-
-async function viewService({ serviceId, provider }) {
-  const providerExists = await ServiceProvider.findOne({ user: provider });
-  if (!providerExists) {
-    throw new AppError(
-      'The service provider profile was not found', 404, "NO_PROVIDER_FOUND"
-    );
-  }
-  const service = await Service.findOne(
-    {
-      _id: serviceId,
-      provider: providerExists._id
-    }
-  );
-  if (!service) {
-    throw new AppError(
-      "Service not found for the given provider.",
-      404,
-      "SERVICE_NOT_FOUND"
-    );
-  }
-  return service;
-}
-
-// Function to get a service by its ID, ensuring it is active and the provider is also active
 
 async function getServiceById({ serviceId }) {
-  const service = await Service.findOne({
-    _id: serviceId,
-    status: "active"
-  }).populate({
-    path: "provider",
-    populate: {
-      path: "user",
-      select: "fullName status"
-    }
-  });
+  const service = await Service.findOne({ _id: serviceId, status: "active" })
+    .populate(servicePopulation);
 
-  if (!service) {
-    throw new AppError(
-      "Service not found",
-      404,
-      "SERVICE_NOT_FOUND"
-    );
+  if (!service || !service.provider?.user ||
+      service.provider.user.status !== "active" || service.provider.user.role !== "provider" ||
+      service.categoryId?.status !== "active") {
+    throw new AppError("Service not found.", 404, "SERVICE_NOT_FOUND");
   }
-
-
-  if (!service.provider.user || !service.provider || service.provider.user.status !== "active") {
-    throw new AppError(
-      "Service not found",
-      404,
-      "SERVICE_NOT_FOUND"
-    );
-  }
-
-  return service;
+  return toServiceResponse(service);
 }
 
+async function listServices(filter, { page = 1, limit = 10, sort = { title: 1, _id: 1 } } = {}) {
+  const total = await Service.countDocuments(filter);
+  const meta = collectionMeta(total, page, limit);
+  const services = await Service.find(filter).sort(sort)
+    .skip((meta.page - 1) * limit).limit(limit).populate(servicePopulation);
+  return { services: services.map(toServiceResponse), meta };
+}
 
 async function getPublicServices({
-  q,
-  category,
-  location,
-  minPrice,
-  maxPrice,
-  sort,
-  page = 1,
-  limit = 10
+  q, category, location, minPrice, maxPrice, sort = "title", page = 1, limit = 10, providerId,
 }) {
-  const activeProviders = await ServiceProvider.find()
-    .populate("user", "status");
-
-  const activeProviderIds = activeProviders
-    .filter((provider) => provider.user && provider.user.status === "active")
-    .map((provider) => provider._id);
-
+  const activeUsers = await User.find({ role: "provider", status: "active" }).distinct("_id");
+  const providers = await ServiceProvider.find({
+    user: { $in: activeUsers },
+    ...(providerId ? { _id: providerId } : {}),
+  }).select("_id displayName").lean();
+  const activeCategories = await Category.find({
+    status: "active", ...(category ? { _id: category } : {}),
+  }).distinct("_id");
   const filter = {
     status: "active",
-    provider: { $in: activeProviderIds }
+    provider: { $in: providers.map((profile) => profile._id) },
+    categoryId: { $in: activeCategories },
   };
 
   if (q) {
-    filter.title = { $regex: q, $options: "i" };
+    const literal = escapeRegex(q);
+    const matchingProviders = providers
+      .filter((profile) => profile.displayName.toLowerCase().includes(q.toLowerCase()))
+      .map((profile) => profile._id);
+    filter.$or = [
+      { title: { $regex: literal, $options: "i" } },
+      { description: { $regex: literal, $options: "i" } },
+      { provider: { $in: matchingProviders } },
+    ];
   }
-
-  if (category) {
-    filter.categoryId = category;
-  }
-
-  if (location) {
-    filter.serviceArea = { $regex: location, $options: "i" };
-  }
-
-  if (minPrice !== undefined) {
+  if (location) filter.serviceArea = { $regex: escapeRegex(location), $options: "i" };
+  if (minPrice !== undefined || maxPrice !== undefined) {
     filter.price = {
-      ...filter.price,
-      $gte: minPrice
+      ...(minPrice !== undefined ? { $gte: minPrice } : {}),
+      ...(maxPrice !== undefined ? { $lte: maxPrice } : {}),
     };
   }
-
-  if (maxPrice !== undefined) {
-    filter.price = {
-      ...filter.price,
-      $lte: maxPrice
-    };
-  }
-
-  let sortOption = { createdAt: -1 };
-
-  if (sort === "price_asc") {
-    sortOption = { price: 1 };
-  }
-
-  if (sort === "price_desc") {
-    sortOption = { price: -1 };
-  }
-
-  const skip = (page - 1) * limit;
-
-  const [services, total] = await Promise.all([
-    Service.find(filter)
-      .sort(sortOption)
-      .skip(skip)
-      .limit(limit),
-
-    Service.countDocuments(filter)
-  ]);
-
-  return {
-    services,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit)
-    }
+  const sorts = {
+    title: { title: 1, _id: 1 },
+    newest: { createdAt: -1, _id: -1 },
+    "price-asc": { price: 1, _id: 1 },
+    "price-desc": { price: -1, _id: 1 },
   };
+  return listServices(filter, { page, limit, sort: sorts[sort] || sorts.title });
 }
 
-
-
-
-module.exports = {
-  serviceCreate,
-  updateService,
-  updateServiceStatus,
-  viewService,
-  getServiceById,
-  getPublicServices
-};
-
-
-
-
+module.exports = { serviceCreate, updateService, updateServiceStatus, getServiceById, getPublicServices, listServices };

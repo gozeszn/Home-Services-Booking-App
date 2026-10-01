@@ -33,11 +33,12 @@ The root `.env` is loaded without overriding existing process environment values
 | --- | --- |
 | `npm run dev` | Start backend with automatic restarts |
 | `npm start` | Start backend normally |
-| `npm test` | Run 13 existing authentication/profile API tests |
-| `npm run test:watch` | Watch the existing API test suite |
-| `npm run check` | Check syntax of app.js and server.js only |
+| `npm test` | Run all backend API and seed regression suites |
+| `npm run test:watch` | Watch all backend test suites |
+| `npm run check` | Check all backend JavaScript syntax and exact local-import casing |
 | `node --test Backend/tests/seedUsers.test.js` | Run two seed safeguard tests |
 | `node Backend/scripts/seedUsers.js` | Create optional development accounts |
+| `npm run seed:categories` | Create missing development categories without changing existing records |
 
 Tests start isolated temporary MongoDB instances without using your application database. The first run may download a MongoDB binary. The API need not be running. The seed command is different: it writes to the database configured in MONGODB_URI.
 
@@ -186,6 +187,8 @@ Invoke-RestMethod -Uri "$baseUrl/users/me" -Method Patch -ContentType 'applicati
 
 ## Integration rules for other members
 
+Member Two's provider/service delivery is documented in [member-two-api.md](member-two-api.md), including revised response fields, onboarding state, category setup, and pagination. Its new tests are included in `npm test`.
+
 Use the existing User model and middleware. MongoDB references use User._id; API responses expose user.id. Do not duplicate authentication endpoints or user identities.
 
 1. Run authenticate before authorize('provider') or authorize('admin'). Authentication checks JWT signature/expiry and loads the active account into req.user. Authorization uses its current database role.
@@ -193,7 +196,7 @@ Use the existing User model and middleware. MongoDB references use User._id; API
 3. Use req.user._id for identity. Each feature must also check resource ownership; role middleware does not check ownership.
 4. Throw AppError(message, statusCode, code, details) for expected failures. Express 5 forwards async controller failures to the error handler.
 5. Mount routers before notFound/errorHandler in app.js. Keep listen calls in server.js.
-6. Member Two owns profiles/services, Member Three bookings/payment records, Member Four reviews/admin APIs. The seeded provider is only a User account; profiles/services still need their feature implementations.
+6. Member Two owns profiles/services, Member Three bookings/payment records, Member Four reviews/admin APIs. The seeded provider is only a User account; onboard it through the provider-profile API before creating services.
 
 CORS currently allows GET, POST, PATCH, OPTIONS and Content-Type/Authorization for CLIENT_ORIGIN. Coordinate new HTTP methods centrally. CORS is a browser policy, not access control.
 
