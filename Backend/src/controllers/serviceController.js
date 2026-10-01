@@ -1,17 +1,5 @@
 const serviceService = require("../Services/serviceService");
 
-async function createProviderProfile(req, res) {
-  const { description, availabilitySummary } = req.validated.body;
-  const result = await serviceService.createProviderProfile({
-    userId: req.user._id,
-    description,
-    availabilitySummary,
-  });
-  return res.status(201).json({
-    success: true,
-    data: result,
-  });
-}
 
 async function createService(req, res) {
   const { title, description, price, categoryId, pricingUnit, serviceArea, availabilitySummary } = req.validated.body;
@@ -88,13 +76,34 @@ async function getServiceById(req, res) {
 }
 
 
+async function getPublicServices(req, res) {
+  const {q, location,minPrice,maxPrice, category,sort, page, limit } = req.query;
+  const result = await serviceService.getPublicServices({
+    q,
+    location,
+    minPrice: minPrice ? Number(minPrice) : undefined,
+    maxPrice: maxPrice ? Number(maxPrice) : undefined,
+    category,
+    sort,
+    page: page ? Number(page) : 1,
+    limit: limit ? Number(limit) : 10,
+  });
+
+  return res.status(200).json({
+    success: true,
+    data: result.services,
+    pagination: result.pagination,
+  });
+}
+
+
 
 
 module.exports = {
-    createProviderProfile,
     createService,
     updateService,
     statusUpdate,
     serviceView,
-    getServiceById
+    getServiceById,
+    getPublicServices
 }
