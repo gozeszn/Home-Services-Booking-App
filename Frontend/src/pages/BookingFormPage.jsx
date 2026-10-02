@@ -8,7 +8,7 @@ import { formatPrice } from "../utils/formatPrice";
 
 export default function BookingFormPage() {
   const { serviceId } = useParams();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
 
   const [service, setService] = useState(null);
@@ -85,7 +85,7 @@ export default function BookingFormPage() {
     setError("");
 
     try {
-      await createBooking(user.id, {
+      await createBooking(token, {
         serviceId,
         scheduledAt: scheduledAt.toISOString(),
         serviceAddress: form.serviceAddress,
@@ -95,7 +95,7 @@ export default function BookingFormPage() {
       navigate("/bookings", {
         replace: true,
         state: {
-          message: "Your demo booking has been created.",
+          message: "Your booking request has been created.",
         },
       });
     } catch (error) {
@@ -146,10 +146,9 @@ export default function BookingFormPage() {
         <span> / {service.pricingUnit}</span>
       </p>
 
-      <p className="demo-notice">
-        This creates a demo booking in this browser tab.
-        No provider will be contacted and no payment will be taken.
-        Use a sample address.
+      <p className="form-note">
+        Your request will be sent to the provider for confirmation.
+        Payment can be recorded after the booking is created.
       </p>
 
       {error && (
@@ -229,7 +228,7 @@ export default function BookingFormPage() {
           >
             {isSubmitting
               ? "Creating booking..."
-              : "Create demo booking"}
+              : "Request Service"}
           </button>
         </fieldset>
       </form>

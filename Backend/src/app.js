@@ -8,6 +8,7 @@ const userRoutes = require("./routes/userRoutes");
 const serviceRoutes = require("./routes/serviceRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const providerRoutes = require("./routes/providerRoutes");
+const bookingRoutes = require("./routes/bookingRoutes");
 
 
 const notFound = require("./middleware/notFound");
@@ -40,15 +41,10 @@ app.get("/api/v1/health", (req, res) => {
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
-
-//service routes
 app.use("/api/v1/services", serviceRoutes);
-
-//provider routes
 app.use("/api/v1/providers", providerRoutes);
-
-//category routes
 app.use("/api/v1/categories", categoryRoutes);
+app.use("/api/v1/bookings", bookingRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

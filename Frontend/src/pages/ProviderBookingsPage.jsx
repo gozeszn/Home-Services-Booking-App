@@ -44,7 +44,7 @@ function formatDate(value) {
 }
 
 export default function ProviderBookingsPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   const [bookings, setBookings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,7 +68,7 @@ export default function ProviderBookingsPage() {
       setError("");
 
       try {
-        const data = await getProviderBookings(user.id);
+        const data = await getProviderBookings(token);
 
         if (active) setBookings(data);
       } catch (error) {
@@ -111,7 +111,7 @@ export default function ProviderBookingsPage() {
 
     try {
       const updated = await updateProviderBookingStatus(
-        user.id,
+        token,
         selectedAction.bookingId,
         selectedAction.status,
         selectedAction.status === "rejected" ? reason : ""

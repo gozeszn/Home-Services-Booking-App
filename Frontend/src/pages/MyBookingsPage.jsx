@@ -5,7 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import {
   getMyBookings,
   cancelBooking,
-  addCompletedDemoBooking,
+  makeTestPayment,
+
 } from "../services/bookingService";
 import { formatPrice } from "../utils/formatPrice";
 
@@ -26,7 +27,7 @@ function formatDate(value) {
 }
 
 export default function MyBookingsPage() {
-  const { user } = useAuth();
+  const { token } = useAuth();
   const location = useLocation();
 
   const [bookings, setBookings] = useState([]);
@@ -40,32 +41,8 @@ export default function MyBookingsPage() {
   const [confirmId, setConfirmId] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [retry, setRetry] = useState(0);
-  const [isAddingDemo, setIsAddingDemo] = useState(false);
+  const [isPayingId, setIsPayingId] = useState(null);
 
-  async function handleAddCompletedDemo() {
-    if (isAddingDemo || isCancelling) return;
-
-    setIsAddingDemo(true);
-    setError("");
-    setMessage("");
-
-    try {
-      const booking = await addCompletedDemoBooking(user.id);
-
-      setBookings((previous) =>
-        previous.some((item) => item.id === booking.id)
-          ? previous
-          : [booking, ...previous]
-      );
-
-      setStatusFilter("completed");
-      setMessage("The completed sample booking is ready to review.");
-    } catch (error) {
-      setError(error.message || "Unable to add the sample booking.");
-    } finally {
-      setIsAddingDemo(false);
-    }
-  }
 
   useEffect(() => {
     let active = true;
@@ -75,7 +52,7 @@ export default function MyBookingsPage() {
       setError("");
 
       try {
-        const data = await getMyBookings(user.id);
+        const data = await getMyBookings(token);
 
         if (active) {
           setBookings(data);
@@ -96,7 +73,36 @@ export default function MyBookingsPage() {
     return () => {
       active = false;
     };
-  }, [user.id, retry]);
+  }, [token, retry]);
+
+  async function handleTestPayment(bookingId) {
+    if (isPayingId || isCancelling) return;
+
+    setIsPayingId(bookingId);
+    setError("");
+    setMessage("");
+
+    try {
+      const result = await makeTestPayment(token, bookingId);
+
+      setBookings((previous) =>
+        previous.map((booking) =>
+          booking.id === bookingId
+            ? {
+                ...booking,
+                paymentStatus: result.paymentStatus,
+              }
+            : booking
+        )
+      );
+
+      setMessage("Payment recorded successfully.");
+    } catch (error) {
+      setError(error.message || "Unable to record the payment.");
+    } finally {
+      setIsPayingId(null);
+    }
+  }
 
   async function handleCancel(bookingId) {
     if (isCancelling) return;
@@ -106,7 +112,7 @@ export default function MyBookingsPage() {
     setMessage("");
 
     try {
-      const updated = await cancelBooking(user.id, bookingId);
+      const updated = await cancelBooking(token, bookingId);
 
       setBookings((previous) =>
         previous.map((booking) =>
@@ -115,7 +121,7 @@ export default function MyBookingsPage() {
       );
 
       setConfirmId(null);
-      setMessage("Your demo booking has been cancelled.");
+      setMessage("Your booking has been cancelled.");
     } catch (error) {
       setError(error.message || "Unable to cancel this booking.");
     } finally {
@@ -138,21 +144,8 @@ export default function MyBookingsPage() {
         </p>
       </div>
 
-      <p className="demo-notice">
-        Demo bookings are stored in this browser tab for your
-        account. They are not shared with providers or other devices.
-      </p>
 
-      <button
-        className="button button--secondary"
-        type="button"
-        disabled={isAddingDemo || isLoading || isCancelling}
-        onClick={handleAddCompletedDemo}
-      >
-        {isAddingDemo
-          ? "Adding sample..."
-          : "Add completed demo booking"}
-      </button>
+      
 
       {message && (
         <p className="form-success" role="status">
@@ -207,7 +200,7 @@ export default function MyBookingsPage() {
               ? "No bookings with this status"
               : "No bookings yet"}
           </h2>
-          <p>Explore services to create your first demo booking.</p>
+          <p>Explore services to create your first booking request.</p>
           <Link className="button" to="/services">
             Find services
           </Link>
@@ -218,6 +211,9 @@ export default function MyBookingsPage() {
             const canCancel = ["pending", "accepted"].includes(
               booking.status
             );
+            const canPay =
+              booking.paymentStatus === "unpaid" &&
+              !["cancelled", "rejected"].includes(booking.status);
 
             return (
               <article className="booking-card" key={booking.id}>
@@ -281,10 +277,23 @@ export default function MyBookingsPage() {
                   </Link>
                 )}
 
+                {canPay && (
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={Boolean(isPayingId) || isCancelling}
+                    onClick={() => handleTestPayment(booking.id)}
+                  >
+                    {isPayingId === booking.id
+                      ? "Recording payment..."
+                      : "Make payment"}
+                  </button>
+                )}
+
                 {canCancel && (
                   confirmId === booking.id ? (
                     <div className="cancel-confirmation">
-                      <p>Cancel this demo booking?</p>
+                      <p>Cancel this booking request?</p>
 
                       <div className="form-actions">
                         <button
