@@ -19,6 +19,7 @@ const roleLinks = {
     { to: "/admin/users", label: "Users" },
     { to: "/admin/services", label: "Services" },
     { to: "/admin/bookings", label: "Bookings" },
+    { to: "/admin/reviews", label: "Reviews" },
   ],
 };
 

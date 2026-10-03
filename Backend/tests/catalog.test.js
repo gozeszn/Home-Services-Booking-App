@@ -161,7 +161,7 @@ describe("Member Two provider and service API", { concurrency: false }, () => {
     assert.equal(service.provider.displayName, profileInput.displayName);
     assert.equal(service.categoryName, "Cleaning");
     assert.equal(service.pricingUnit, "visit");
-    assert.deepEqual(service.ratingSummary, { available: false, averageRating: null, ratingCount: null });
+    assert.deepEqual(service.ratingSummary, { available: true, averageRating: null, ratingCount: 0 });
     await api("get", "/services/" + service.id).expect(404);
     await api("patch", "/services/" + service.id + "/status", "a").send({ status: "active" }).expect(200);
     const detail = await api("get", "/services/" + service.id).expect(200);

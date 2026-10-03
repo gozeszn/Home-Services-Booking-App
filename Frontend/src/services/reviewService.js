@@ -1,102 +1,69 @@
-import { getMyBookings } from "./bookingService";
+import { apiRequest, ApiError } from "./api";
 
-const PREFIX = "homeServices.demoReviews.";
-
-function storageKey(userId) {
-  if (!userId) {
-    throw new Error("Please log in to manage reviews.");
-  }
-
-  return `${PREFIX}${userId}`;
+function invalidResponse(message) {
+  return new ApiError(message, 502, "INVALID_RESPONSE");
 }
 
-function readReviews(userId) {
-  const key = storageKey(userId);
-
-  try {
-    const saved = sessionStorage.getItem(key);
-    const reviews = saved ? JSON.parse(saved) : [];
-
-    if (
-      !Array.isArray(reviews) ||
-      reviews.some((review) => review.customerId !== userId)
-    ) {
-      throw new Error("Invalid stored reviews");
-    }
-
-    return reviews;
-  } catch {
-    throw new Error("Unable to read your demo reviews.");
-  }
-}
-
-export async function getBookingReview(userId, bookingId) {
-  return (
-    readReviews(userId).find(
-      (review) => review.bookingId === bookingId
-    ) || null
-  );
-}
-
-export async function createBookingReview(
-  userId,
-  bookingId,
-  { rating, comment }
-) {
-  const bookings = await getMyBookings(userId);
-
-  const booking = bookings.find(
-    (item) =>
-      item.id === bookingId &&
-      item.customerId === userId
-  );
-
-  if (!booking) {
-    throw new Error("This booking could not be found.");
-  }
-
-  if (booking.status !== "completed") {
-    throw new Error("Only completed bookings can be reviewed.");
-  }
-
-  const score = Number(rating);
-  const trimmedComment = comment.trim();
-
-  if (!Number.isInteger(score) || score < 1 || score > 5) {
-    throw new Error("Choose a rating between 1 and 5.");
-  }
-
-  if (trimmedComment.length > 1000) {
-    throw new Error("Your comment must not exceed 1,000 characters.");
-  }
-
-  // Check immediately before writing, after the asynchronous booking lookup.
-  const reviews = readReviews(userId);
-
-  if (reviews.some((review) => review.bookingId === bookingId)) {
-    throw new Error("You have already reviewed this booking.");
-  }
-
-  const review = {
-    id: crypto.randomUUID(),
-    bookingId,
-    serviceId: booking.serviceId,
-    customerId: userId,
-    rating: score,
-    comment: trimmedComment,
-    createdAt: new Date().toISOString(),
-  };
-
-  try {
-    sessionStorage.setItem(
-      storageKey(userId),
-      JSON.stringify([review, ...reviews])
-    );
-  } catch {
-    throw new Error(
-      "Unable to save your review. Check that browser storage is available."
-    );
+function assertReview(review) {
+  if (
+    !review ||
+    typeof review.id !== "string" ||
+    typeof review.bookingId !== "string" ||
+    !Number.isInteger(review.rating) ||
+    review.rating < 1 ||
+    review.rating > 5
+  ) {
+    throw invalidResponse("The server returned invalid review data.");
   }
 
   return review;
+}
+
+export async function getBookingReview(token, bookingId) {
+  const review = await apiRequest(
+    `/bookings/${encodeURIComponent(bookingId)}/review`,
+    { token }
+  );
+
+  return review === null ? null : assertReview(review);
+}
+
+export async function createBookingReview(
+  token,
+  bookingId,
+  { rating, comment }
+) {
+  const review = await apiRequest(
+    `/bookings/${encodeURIComponent(bookingId)}/review`,
+    {
+      method: "POST",
+      token,
+      body: {
+        rating: Number(rating),
+        comment: comment.trim(),
+      },
+    }
+  );
+
+  return assertReview(review);
+}
+
+export async function getServiceReviews(
+  serviceId,
+  { page = 1, limit = 10, signal } = {}
+) {
+  const result = await apiRequest(
+    `/services/${encodeURIComponent(serviceId)}/reviews?page=${page}&limit=${limit}`,
+    { signal }
+  );
+
+  if (
+    !result ||
+    !Array.isArray(result.reviews) ||
+    !result.meta
+  ) {
+    throw invalidResponse("The server returned invalid review results.");
+  }
+
+  return result;
 }

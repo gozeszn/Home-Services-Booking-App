@@ -3,6 +3,7 @@ const AppError = require("../utils/AppError");
 const { createProviderProfileSchema } = require("../validators/providerValidator");
 const { toProviderResponse, collectionMeta } = require("../utils/catalogResponse");
 const { getPublicServices, listServices } = require("./serviceService");
+const { getProviderRatingSummaries } = require("./reviewService");
 
 async function createAndUpdateProviderProfile({ userId, ...fields }) {
   let profile = await ServiceProvider.findOne({ user: userId });
@@ -22,11 +23,11 @@ async function createAndUpdateProviderProfile({ userId, ...fields }) {
     );
     if (!profile) throw new AppError("Provider profile not found.", 404, "SERVICE_PROVIDER_PROFILE_NOT_FOUND");
   }
-  return toProviderResponse(profile, { own: true });
+  return toProviderResponseWithRating(profile, { own: true });
 }
 
 async function getMyProfile({ userId }) {
-  return toProviderResponse(await ServiceProvider.findOne({ user: userId }), { own: true });
+  return toProviderResponseWithRating(await ServiceProvider.findOne({ user: userId }), { own: true });
 }
 
 async function getPublicProvider({ providerId, page = 1, limit = 10 }) {
@@ -35,7 +36,11 @@ async function getPublicProvider({ providerId, page = 1, limit = 10 }) {
     throw new AppError("Provider profile not found.", 404, "SERVICE_PROVIDER_PROFILE_NOT_FOUND");
   }
   const result = await getPublicServices({ providerId, page, limit });
-  return { ...toProviderResponse(profile), services: result.services, serviceMeta: result.meta };
+  return {
+    ...(await toProviderResponseWithRating(profile)),
+    services: result.services,
+    serviceMeta: result.meta,
+  };
 }
 
 async function getMyServices({ userId, status, page = 1, limit = 10 }) {
@@ -45,6 +50,17 @@ async function getMyServices({ userId, status, page = 1, limit = 10 }) {
     { provider: profile._id, ...(status ? { status } : {}) },
     { page, limit, sort: { createdAt: -1, _id: -1 } }
   );
+}
+
+async function toProviderResponseWithRating(profile, options = {}) {
+  if (!profile) return null;
+
+  const summaries = await getProviderRatingSummaries([profile._id]);
+
+  return toProviderResponse(profile, {
+    ...options,
+    ratingSummary: summaries.get(String(profile._id)),
+  });
 }
 
 module.exports = { createAndUpdateProviderProfile, getMyProfile, getPublicProvider, getMyServices };

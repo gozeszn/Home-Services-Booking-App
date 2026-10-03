@@ -149,9 +149,20 @@ export default function PublicProviderPage() {
             {provider.description || "No description provided."}
           </p>
 
-          <p className="form-note">
-            Ratings and reviews are not available in this version yet.
-          </p>
+          {provider.ratingSummary?.available && (
+            <p
+              className="review-score"
+              aria-label={
+                provider.ratingSummary.ratingCount > 0
+                  ? `${provider.ratingSummary.averageRating} out of 5 from ${provider.ratingSummary.ratingCount} reviews`
+                  : "No reviews yet"
+              }
+            >
+              {provider.ratingSummary.ratingCount > 0
+                ? `★ ${provider.ratingSummary.averageRating} / 5 (${provider.ratingSummary.ratingCount} review${provider.ratingSummary.ratingCount === 1 ? "" : "s"})`
+                : "No reviews yet"}
+            </p>
+          )}
         </article>
 
         <aside

@@ -5,6 +5,9 @@ const Category = require("../models/category");
 const AppError = require("../utils/AppError");
 const { escapeRegex } = require("../utils/catalogRules");
 const { toServiceResponse, collectionMeta } = require("../utils/catalogResponse");
+const {
+  getServiceRatingSummaries,
+} = require("./reviewService");
 
 const servicePopulation = [
   { path: "provider", select: "displayName user", populate: { path: "user", select: "status role" } },
@@ -30,7 +33,7 @@ async function serviceCreate({ provider, ...fields }) {
   await requireActiveCategory(fields.categoryId);
   const service = await Service.create({ ...fields, provider: profile._id, currency: "NGN", status: "inactive" });
   await service.populate(servicePopulation);
-  return toServiceResponse(service);
+  return (await withRatingSummaries([service]))[0];
 }
 
 async function updateService({ serviceId, provider, ...fields }) {
@@ -47,7 +50,7 @@ async function updateService({ serviceId, provider, ...fields }) {
     { returnDocument: "after", runValidators: true }
   ).populate(servicePopulation);
   if (!updated) throw new AppError("Service not found.", 404, "SERVICE_NOT_FOUND");
-  return toServiceResponse(updated);
+  return (await withRatingSummaries([updated]))[0];
 }
 
 async function updateServiceStatus({ serviceId, provider, status }) {
@@ -62,7 +65,19 @@ async function updateServiceStatus({ serviceId, provider, status }) {
     { returnDocument: "after", runValidators: true }
   ).populate(servicePopulation);
   if (!updated) throw new AppError("Service not found.", 404, "SERVICE_NOT_FOUND");
-  return toServiceResponse(updated);
+  return (await withRatingSummaries([updated]))[0];
+}
+
+async function withRatingSummaries(services) {
+  const summaries = await getServiceRatingSummaries(
+    services.map((service) => service._id)
+  );
+
+  return services.map((service) =>
+    toServiceResponse(service, {
+      ratingSummary: summaries.get(String(service._id)),
+    })
+  );
 }
 
 async function getServiceById({ serviceId }) {
@@ -74,7 +89,7 @@ async function getServiceById({ serviceId }) {
       service.categoryId?.status !== "active") {
     throw new AppError("Service not found.", 404, "SERVICE_NOT_FOUND");
   }
-  return toServiceResponse(service);
+  return (await withRatingSummaries([service]))[0];
 }
 
 async function listServices(filter, { page = 1, limit = 10, sort = { title: 1, _id: 1 } } = {}) {
@@ -82,7 +97,10 @@ async function listServices(filter, { page = 1, limit = 10, sort = { title: 1, _
   const meta = collectionMeta(total, page, limit);
   const services = await Service.find(filter).sort(sort)
     .skip((meta.page - 1) * limit).limit(limit).populate(servicePopulation);
-  return { services: services.map(toServiceResponse), meta };
+  return {
+    services: await withRatingSummaries(services),
+    meta,
+  };
 }
 
 async function getPublicServices({

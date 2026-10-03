@@ -18,7 +18,7 @@ const ratingLabels = {
 
 export default function BookingReviewPage() {
   const { bookingId } = useParams();
-  const { user } = useAuth();
+  const { token } = useAuth();
 
   const [booking, setBooking] = useState(null);
   const [review, setReview] = useState(null);
@@ -47,14 +47,12 @@ export default function BookingReviewPage() {
 
       try {
         const [bookings, existingReview] = await Promise.all([
-          getMyBookings(user.id),
-          getBookingReview(user.id, bookingId),
+          getMyBookings(token),
+          getBookingReview(token, bookingId),
         ]);
 
         const selected = bookings.find(
-          (item) =>
-            item.id === bookingId &&
-            item.customerId === user.id
+          (item) => item.id === bookingId
         );
 
         if (!selected) {
@@ -79,7 +77,7 @@ export default function BookingReviewPage() {
     return () => {
       active = false;
     };
-  }, [user.id, bookingId, retry]);
+  }, [token, bookingId, retry]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -91,13 +89,13 @@ export default function BookingReviewPage() {
 
     try {
       const saved = await createBookingReview(
-        user.id,
+        token,
         bookingId,
         { rating, comment }
       );
 
       setReview(saved);
-      setMessage("Your demo review has been saved.");
+      setMessage("Your review has been saved.");
     } catch (error) {
       setError(error.message || "Unable to save your review.");
     } finally {
@@ -147,9 +145,9 @@ export default function BookingReviewPage() {
       <h2>{booking.serviceTitle}</h2>
       <p>{booking.providerName}</p>
 
-      <p className="demo-notice">
-        This review is saved in your browser tab only.
-        It is not published or shared with the provider.
+      <p className="form-note">
+        Your review is published publicly and may be moderated if it
+        does not follow platform guidelines.
       </p>
 
       {message && (
@@ -236,7 +234,7 @@ export default function BookingReviewPage() {
             </div>
 
             <button className="button" type="submit">
-              {isSaving ? "Submitting..." : "Submit demo review"}
+              {isSaving ? "Submitting..." : "Submit review"}
             </button>
           </fieldset>
         </form>

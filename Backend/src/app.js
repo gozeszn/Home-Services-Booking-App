@@ -9,6 +9,7 @@ const serviceRoutes = require("./routes/serviceRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const providerRoutes = require("./routes/providerRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
 
 
 const notFound = require("./middleware/notFound");
@@ -45,6 +46,7 @@ app.use("/api/v1/services", serviceRoutes);
 app.use("/api/v1/providers", providerRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/bookings", bookingRoutes);
+app.use("/api/v1", reviewRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

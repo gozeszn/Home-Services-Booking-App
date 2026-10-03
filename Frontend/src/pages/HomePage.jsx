@@ -178,14 +178,7 @@ export default function HomePage() {
         </form>
       </section>
 
-      <div className="demo-notice">
-        {USING_MOCK_SERVICES
-          ? "Project preview: service listings use demo data."
-          : "Service listings now load from the backend."}
-        {" "}
-        Booking, payment, review, and admin workflows are not yet connected
-        to their backend APIs. Demo bookings do not contact providers.
-      </div>
+      
 
       {isLoading ? (
         <p className="home-load-state" role="status">

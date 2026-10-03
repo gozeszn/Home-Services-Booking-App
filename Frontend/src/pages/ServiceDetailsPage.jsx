@@ -8,11 +8,14 @@ import {
 import { formatPrice } from "../utils/formatPrice";
 import { useAuth } from "../context/AuthContext";
 
+import { getServiceReviews } from "../services/reviewService";
+
 export default function ServiceDetailsPage() {
   const { serviceId } = useParams();
   const { user, isLoading: isCheckingSession } = useAuth();
 
   const [service, setService] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
@@ -26,10 +29,14 @@ export default function ServiceDetailsPage() {
       setService(null);
 
       try {
-        const data = await getService(serviceId);
+        const [serviceData, reviewData] = await Promise.all([
+          getService(serviceId),
+          getServiceReviews(serviceId),
+        ]);
 
         if (active) {
-          setService(data);
+          setService(serviceData);
+          setReviews(reviewData.reviews);
         }
       } catch (error) {
         if (active) {
@@ -111,6 +118,21 @@ export default function ServiceDetailsPage() {
             </Link>
           </p>
 
+          {service.ratingSummary?.available && (
+            <p
+              className="review-score"
+              aria-label={
+                service.ratingSummary.ratingCount > 0
+                  ? `${service.ratingSummary.averageRating} out of 5 from ${service.ratingSummary.ratingCount} reviews`
+                  : "No reviews yet"
+              }
+            >
+              {service.ratingSummary.ratingCount > 0
+                ? `★ ${service.ratingSummary.averageRating} / 5 (${service.ratingSummary.ratingCount} review${service.ratingSummary.ratingCount === 1 ? "" : "s"})`
+                : "No reviews yet"}
+            </p>
+          )}
+
           <h2>About this service</h2>
           <p>{service.description}</p>
 
@@ -151,7 +173,7 @@ export default function ServiceDetailsPage() {
               </Link>
 
               <p className="form-note">
-                Demo booking only. No provider will be contacted.
+                Submit a booking request for provider confirmation.
               </p>
             </>
           ) : (
@@ -161,6 +183,37 @@ export default function ServiceDetailsPage() {
           )}
         </aside>
       </div>
+      <section className="panel">
+        <h2>Customer reviews</h2>
+
+        {reviews.length === 0 ? (
+          <p className="form-note">
+            This service has no published reviews yet.
+          </p>
+        ) : (
+          <div className="review-list">
+            {reviews.map((review) => (
+              <article className="review-card" key={review.id}>
+                <p className="review-score">
+                  {review.rating} out of 5
+                </p>
+
+                <p>
+                  {review.customer?.fullName || "Verified customer"}
+                </p>
+
+                <p className="review-comment">
+                  {review.comment || "No written comment provided."}
+                </p>
+
+                <p className="form-note">
+                  {new Date(review.createdAt).toLocaleDateString()}
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </section>
   );
 }

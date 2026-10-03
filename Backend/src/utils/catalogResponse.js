@@ -5,7 +5,13 @@ function unavailableRatingSummary() {
   return { available: false, averageRating: null, ratingCount: null };
 }
 
-function toProviderResponse(profile, { own = false } = {}) {
+function toProviderResponse(
+  profile,
+  {
+    own = false,
+    ratingSummary = unavailableRatingSummary(),
+  } = {}
+) {
   if (!profile) return null;
   return {
     id: String(profile._id),
@@ -15,13 +21,16 @@ function toProviderResponse(profile, { own = false } = {}) {
     phone: profile.phone,
     serviceArea: profile.serviceArea,
     availabilitySummary: profile.availabilitySummary || "",
-    ratingSummary: unavailableRatingSummary(),
+    ratingSummary,
     createdAt: profile.createdAt,
     updatedAt: profile.updatedAt,
   };
 }
 
-function toServiceResponse(service) {
+function toServiceResponse(
+  service,
+  { ratingSummary = unavailableRatingSummary() } = {}
+) {
   const provider = service.provider;
   const category = service.categoryId;
   return {
@@ -41,7 +50,7 @@ function toServiceResponse(service) {
     pricingUnit: normalizePricingUnit(service.pricingUnit),
     availabilitySummary: service.availabilitySummary,
     status: service.status,
-    ratingSummary: unavailableRatingSummary(),
+    ratingSummary,
     createdAt: service.createdAt,
     updatedAt: service.updatedAt,
   };

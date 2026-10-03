@@ -22,6 +22,7 @@ import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminServicesPage from "./pages/AdminServicesPage";
 import AdminBookingsPage from "./pages/AdminBookingsPage";
 import PublicProviderPage from "./pages/PublicProviderPage";
+import AdminReviewsPage from "./pages/AdminReviewsPage";
 
 function NotFoundPage() {
   return (
@@ -127,6 +128,8 @@ export default function App() {
           <Route path="/admin/services" element={<AdminServicesPage />} />
 
           <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+
+          <Route path="/admin/reviews" element={<AdminReviewsPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

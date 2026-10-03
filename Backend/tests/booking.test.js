@@ -41,7 +41,7 @@ describe("Member Three booking and payment API", { concurrency: false }, () => {
     return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
   }
 
-  async function createBooking(who = "customer", overrides = {}) {
+  function createBooking(who = "customer", overrides = {}) {
     return api("post", "/bookings", who)
       .send({
         serviceId: String(activeService._id),
