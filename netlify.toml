@@ -1,0 +1,8 @@
+[build]
+  command = "npm run frontend:build"
+  publish = "Frontend/dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
