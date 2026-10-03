@@ -40,6 +40,10 @@ app.get("/api/v1/health", (req, res) => {
   });
 });
 
+app.get("/", (req, res) => {
+  res.send("Home Services API is running...")
+});
+
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/services", serviceRoutes);
