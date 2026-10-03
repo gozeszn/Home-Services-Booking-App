@@ -1,5 +1,7 @@
 # Home Services Booking App
 
+Production frontend url: https://home-services-booking-app.pages.dev/
+
 The backend delivers Member One's authentication/account APIs and Member Two's provider profiles, categories, and service APIs. Booking, payment-record, review, and admin APIs remain separate work. The React feature pages currently use demo data except for authentication and account profiles.
 
 Start with the [backend handoff guide](docs/backend-handoff.md) for setup, environment variables, development seed accounts, API request/response examples, and integration instructions.
