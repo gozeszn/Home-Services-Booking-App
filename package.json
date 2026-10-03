@@ -11,7 +11,7 @@
     "test:watch": "node --test --watch Backend/test.js Backend/tests/*.test.js",
     "check": "node Backend/scripts/checkSource.js",
     "frontend:dev": "vite Frontend --port 5173 --strictPort",
-    "frontend:build": "vite build Frontend",
+    "frontend:build": "vite build Frontend && node Backend/scripts/copyRedirect.js",
     "frontend:preview": "vite preview Frontend --port 5173 --strictPort",
     "seed:categories": "node Backend/scripts/seedCategories.js"
   },
