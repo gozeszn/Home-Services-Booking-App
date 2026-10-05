@@ -6,6 +6,7 @@ const Service = require("../models/services");
 const ServiceProvider = require("../models/serviceProvider");
 const AppError = require("../utils/AppError");
 const { collectionMeta } = require("../utils/catalogResponse");
+const { normalizePricingUnit } = require("../utils/catalogRules");
 
 const BOOKING_POPULATION = [
   {
@@ -188,7 +189,7 @@ async function createBooking({ customer, ...details }) {
     providerDisplayName: service.provider.displayName,
     agreedPrice: service.price,
     currency: service.currency,
-    pricingUnit: service.pricingUnit,
+    pricingUnit: normalizePricingUnit(service.pricingUnit),
 
     scheduledAt,
     serviceAddress: details.serviceAddress,
