@@ -2,6 +2,7 @@ import React from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
+import "../styles/visualRefresh.css";
 
 const roleLinks = {
   customer: [
@@ -48,7 +49,18 @@ export default function AppLayout() {
       <header className="site-header">
         <div className="container header-content">
           <Link className="brand" to="/">
-            Home Services
+            <span className="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 48 48" role="img">
+                <path d="M7 22.2 24 8l17 14.2v17.3a2.5 2.5 0 0 1-2.5 2.5h-29A2.5 2.5 0 0 1 7 39.5V22.2Z" />
+                <path d="M18 42V28h12v14" />
+                <path d="m31.5 14.4 3.2-6.4" />
+                <path d="m35.2 18.2 6.8-1.8" />
+              </svg>
+            </span>
+            <span className="brand-copy">
+              <strong>Home<span>Services</span></strong>
+              <small>HOME SERVICES</small>
+            </span>
           </Link>
 
           <nav
